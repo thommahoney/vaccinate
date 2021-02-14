@@ -4,10 +4,11 @@ use std::str;
 use chrono::{Duration, Local};
 use libflate::gzip::Decoder;
 use reqwest;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::config;
 use crate::errors;
+use crate::pushover;
 
 // curl 'https://www.walgreens.com/hcschedulersvc/svc/v1/immunizationLocations/availability' \
 //   -H 'content-type: application/json; charset=UTF-8' \
@@ -58,6 +59,18 @@ impl SearchInput {
     }
 }
 
+// {"stateName":"New York","stateCode":"NY","zipCode":"14564","radius":25,"days":3}
+#[allow(non_snake_case)]
+#[derive(Debug, Deserialize)]
+struct AppointmentAvailabilityResponse {
+    appointmentsAvailable: bool,
+    days: u8,
+    radius: u8,
+    stateCode: String,
+    stateName: String,
+    zipCode: String,
+}
+
 pub struct Provider {
     config: config::Config,
 }
@@ -105,14 +118,40 @@ impl Provider {
                 return errors::report("walgreens", e, &self.config).await;
             }
         }
-        let text = match String::from_utf8(buf) {
-            Ok(t) => t,
-            Err(e) => {
-                let e = format!("Invalid utf-8 bytes: {:?}", e);
-                return errors::report("walgreens", e, &self.config).await;
-            }
-        };
 
-        println!("[walgreens] status = {}, response = {}", status, text);
+        let appt_avail: AppointmentAvailabilityResponse =
+            match serde_json::from_slice(&buf as &[u8]) {
+                Ok(appt) => appt,
+                Err(e) => {
+                    let e = format!("Invalid response: {:?}", e);
+                    return errors::report("walgreens", e, &self.config).await;
+                }
+            };
+
+        println!(
+            "[walgreens] status = {}, response = {:?}",
+            status, appt_avail
+        );
+
+        match appt_avail.appointmentsAvailable {
+            true => {
+                println!(
+                    "[walgreens] Appointments available in {}!",
+                    appt_avail.zipCode
+                );
+                pushover::send(
+                    "Vaccinate!".to_string(),
+                    "Walgreens has availability.".to_string(),
+                    self.config.clone(),
+                )
+                .await
+            }
+            false => {
+                println!(
+                    "[walgreens] No appointments available in {}.",
+                    appt_avail.zipCode
+                );
+            }
+        }
     }
 }
