@@ -6,6 +6,8 @@ use tokio::task;
 use tokio::time::sleep;
 
 mod config;
+mod errors;
+mod pushover;
 mod walgreens;
 
 #[tokio::main]
@@ -14,16 +16,20 @@ async fn main() {
         .version("0.1.0")
         .author("Thom Mahoney <mahoneyt@gmail.com>")
         .about("Checks and notifies for COVID-19 vaccine availability.")
-        .arg(Arg::with_name("config")
-                 .short("c")
-                 .long("config")
-                 .takes_value(true)
-                 .default_value("vaccinate.toml")
-                 .help("Path to vaccinate.toml configuration."))
-        .arg(Arg::with_name("debug")
-                 .short("d")
-                 .long("debug")
-                 .help("Enables verbose logging and error reporting."))
+        .arg(
+            Arg::with_name("config")
+                .short("c")
+                .long("config")
+                .takes_value(true)
+                .default_value("vaccinate.toml")
+                .help("Path to vaccinate.toml configuration."),
+        )
+        .arg(
+            Arg::with_name("debug")
+                .short("d")
+                .long("debug")
+                .help("Enables verbose logging and error reporting."),
+        )
         .get_matches();
 
     let config_arg = app.value_of("config");
@@ -68,7 +74,7 @@ async fn main() {
 
         for provider in vec![cvs, walgreens] {
             match provider.await {
-                Ok(_) => { },
+                Ok(_) => {}
                 Err(e) => {
                     eprintln!("unexpected error: {}", e);
                 }

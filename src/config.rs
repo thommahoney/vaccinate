@@ -60,9 +60,7 @@ impl Config {
     pub fn read<S: AsRef<str>>(path: Option<S>, debug: bool) -> Result<Config, ConfigError> {
         let path = match path {
             Some(p) => String::from(p.as_ref()),
-            None => {
-                return Err(ConfigError::MissingConfig)
-            }
+            None => return Err(ConfigError::MissingConfig),
         };
 
         println!("Reading configuration ({})...", path);

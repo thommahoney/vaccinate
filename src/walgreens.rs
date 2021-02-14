@@ -7,12 +7,14 @@ use reqwest;
 use serde::Serialize;
 
 use crate::config;
+use crate::errors;
 
 // curl 'https://www.walgreens.com/hcschedulersvc/svc/v1/immunizationLocations/availability' \
 //   -H 'content-type: application/json; charset=UTF-8' \
 //   --data '{"serviceId":"99","position":{"latitude":XX.XXXXXXX,"longitude":-XX.XXXXXX},"appointmentAvailability":{"startDateTime":"2021-02-15"},"radius":25}'
 
-const APPT_URL: &'static str = "https://www.walgreens.com/hcschedulersvc/svc/v1/immunizationLocations/availability";
+const APPT_URL: &'static str =
+    "https://www.walgreens.com/hcschedulersvc/svc/v1/immunizationLocations/availability";
 const RADIUS: u8 = 25;
 const SERVICE_ID: &'static str = "99";
 const START_DATE_TIME_FORMAT: &'static str = "%Y-%m-%d"; // 2021-02-14
@@ -74,7 +76,8 @@ impl Provider {
         println!("[walgreens] request JSON: {}", search_json);
 
         let client = reqwest::Client::new();
-        let resp = client.post(APPT_URL)
+        let resp = client
+            .post(APPT_URL)
             .header("Accept", "application/json")
             .header("Content-Type", "application/json; charset=UTF-8")
             .header("Accept-Encoding", "gzip")
@@ -90,22 +93,24 @@ impl Provider {
                 let mut decoder = Decoder::new(&bytes as &[u8]).unwrap();
                 let mut buf = Vec::new();
                 match decoder.read_to_end(&mut buf) {
-                    Ok(_) => {},
+                    Ok(_) => {}
                     Err(e) => {
-                        eprintln!("[walgreens] Error decoding gzip {:?}", e);
+                        let e = format!("Error decoding gzip: {:?}", e);
+                        errors::report("walgreens", e, &self.config).await;
                         return;
                     }
                 }
                 let text = match String::from_utf8(buf) {
                     Ok(t) => t,
                     Err(e) => {
-                        eprintln!("[walgreens] Invalid utf-8 bytes: {:?}", e);
+                        let e = format!("Invalid utf-8 bytes: {:?}", e);
+                        errors::report("walgreens", e, &self.config).await;
                         return;
                     }
                 };
 
                 println!("[walgreens] status = {}, response = {}", status, text);
-            },
+            }
             Err(e) => {
                 eprintln!("[walgreens] Request error: {:?}", e);
             }
