@@ -1,7 +1,7 @@
-use std::env;
 use std::process;
 use std::time::Duration;
 
+use clap::{App, Arg};
 use tokio::task;
 use tokio::time::sleep;
 
@@ -10,15 +10,36 @@ mod walgreens;
 
 #[tokio::main]
 async fn main() {
-    let args: Vec<String> = env::args().collect();
+    let app = App::new("Vaccinate")
+        .version("0.1.0")
+        .author("Thom Mahoney <mahoneyt@gmail.com>")
+        .about("Checks and notifies for COVID-19 vaccine availability.")
+        .arg(Arg::with_name("config")
+                 .short("c")
+                 .long("config")
+                 .takes_value(true)
+                 .default_value("vaccinate.toml")
+                 .help("Path to vaccinate.toml configuration."))
+        .arg(Arg::with_name("debug")
+                 .short("d")
+                 .long("debug")
+                 .help("Enables verbose logging and error reporting."))
+        .get_matches();
 
-    if args.len() > 1 {
-        eprintln!("No arguments are accepted at this time.");
-        process::exit(1);
+    let config_arg = app.value_of("config");
+    let debug_arg = app.is_present("debug");
+
+    let config = match config::Config::read(config_arg, debug_arg) {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("Configuration error: {:?}", e);
+            process::exit(1);
+        }
+    };
+
+    if config.debug.unwrap() {
+        println!("[debug] config = {:?}", config);
     }
-
-    // TODO: accept --config flag
-    let config = config::Config::read(None).unwrap();
 
     println!("Hello, {}. Let's vaccinate...", config.name);
 

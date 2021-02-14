@@ -42,23 +42,27 @@ pub struct Walgreens {
 pub enum ConfigError {
     FileSystemError(String),
     InvalidToml(String),
+    MissingConfig,
 }
 
 #[allow(dead_code)]
 #[derive(Clone, Debug, Deserialize)]
 pub struct Config {
-    pub name: String,
     pub address: Address,
     pub cvs: Option<CvsPharmacy>,
+    pub debug: Option<bool>,
+    pub name: String,
     pub pushover: Option<Pushover>,
     pub walgreens: Option<Walgreens>,
 }
 
 impl Config {
-    pub fn read(path: Option<String>) -> Result<Config, ConfigError> {
+    pub fn read<S: AsRef<str>>(path: Option<S>, debug: bool) -> Result<Config, ConfigError> {
         let path = match path {
-            Some(p) => p,
-            None => String::from("vaccinate.toml"),
+            Some(p) => String::from(p.as_ref()),
+            None => {
+                return Err(ConfigError::MissingConfig)
+            }
         };
 
         println!("Reading configuration ({})...", path);
@@ -74,7 +78,10 @@ impl Config {
         };
 
         match toml::from_str::<Config>(&contents) {
-            Ok(c) => Ok(c),
+            Ok(mut c) => {
+                c.debug = Some(debug);
+                Ok(c)
+            }
             Err(e) => Err(ConfigError::InvalidToml(format!("Invalid toml: {:?}", e))),
         }
     }
