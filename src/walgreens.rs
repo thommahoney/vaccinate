@@ -85,35 +85,34 @@ impl Provider {
             .send()
             .await;
 
-        match resp {
-            Ok(r) => {
-                let status = r.status();
-
-                let bytes = r.bytes().await.unwrap();
-                let mut decoder = Decoder::new(&bytes as &[u8]).unwrap();
-                let mut buf = Vec::new();
-                match decoder.read_to_end(&mut buf) {
-                    Ok(_) => {}
-                    Err(e) => {
-                        let e = format!("Error decoding gzip: {:?}", e);
-                        errors::report("walgreens", e, &self.config).await;
-                        return;
-                    }
-                }
-                let text = match String::from_utf8(buf) {
-                    Ok(t) => t,
-                    Err(e) => {
-                        let e = format!("Invalid utf-8 bytes: {:?}", e);
-                        errors::report("walgreens", e, &self.config).await;
-                        return;
-                    }
-                };
-
-                println!("[walgreens] status = {}, response = {}", status, text);
-            }
+        let resp = match resp {
+            Ok(r) => r,
             Err(e) => {
-                eprintln!("[walgreens] Request error: {:?}", e);
+                let e = format!("Request error: {:?}", e);
+                return errors::report("walgreens", e, &self.config).await;
+            }
+        };
+
+        let status = resp.status();
+
+        let bytes = resp.bytes().await.unwrap();
+        let mut decoder = Decoder::new(&bytes as &[u8]).unwrap();
+        let mut buf = Vec::new();
+        match decoder.read_to_end(&mut buf) {
+            Ok(_) => {}
+            Err(e) => {
+                let e = format!("Error decoding gzip: {:?}", e);
+                return errors::report("walgreens", e, &self.config).await;
             }
         }
+        let text = match String::from_utf8(buf) {
+            Ok(t) => t,
+            Err(e) => {
+                let e = format!("Invalid utf-8 bytes: {:?}", e);
+                return errors::report("walgreens", e, &self.config).await;
+            }
+        };
+
+        println!("[walgreens] status = {}, response = {}", status, text);
     }
 }

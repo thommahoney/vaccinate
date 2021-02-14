@@ -6,6 +6,6 @@ pub async fn report(provider: &str, message: String, config: &config::Config) {
     eprintln!("{}", e);
 
     if config.debug.unwrap() {
-		pushover::send("Vaccinate Error".to_string(), e, config.clone()).await
-	}
+        pushover::send("Vaccinate Error".to_string(), e, config.clone()).await
+    }
 }
