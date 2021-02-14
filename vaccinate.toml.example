@@ -1,0 +1,23 @@
+name = ''
+
+[address]
+city = ''
+latitude = ##.#####
+longitude = ##.#####
+state = ''
+street = ''
+street2 = ''
+zipcode = #####
+
+[cvs]
+email    = ''
+password = ''
+
+[walgreens]
+email    = ''
+password = ''
+
+[pushover]
+app_token  = ''
+device     = ''
+user_token = ''
