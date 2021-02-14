@@ -85,22 +85,21 @@ impl Provider {
         match resp {
             Ok(r) => {
                 let status = r.status();
-                // let text = match r.text().await {
-                //     Ok(t) => t,
-                //     Err(e) => {
-                //         eprintln!("[walgreens] Error reading response text: {:?}", e);
-                //         return;
-                //     }
-                // };
 
                 let bytes = r.bytes().await.unwrap();
                 let mut decoder = Decoder::new(&bytes as &[u8]).unwrap();
                 let mut buf = Vec::new();
-                decoder.read_to_end(&mut buf).unwrap();
+                match decoder.read_to_end(&mut buf) {
+                    Ok(_) => {},
+                    Err(e) => {
+                        eprintln!("[walgreens] Error decoding gzip {:?}", e);
+                        return;
+                    }
+                }
                 let text = match String::from_utf8(buf) {
                     Ok(t) => t,
                     Err(e) => {
-                        println!("[walgreens] Error decoding gzip to utf-8: {}", e);
+                        eprintln!("[walgreens] Invalid utf-8 bytes: {:?}", e);
                         return;
                     }
                 };
